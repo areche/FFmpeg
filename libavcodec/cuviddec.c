@@ -92,6 +92,9 @@ typedef struct CuvidContext
 
     CudaFunctions *cudl;
     CuvidFunctions *cvdl;
+
+    int full_frames;
+    int buffer_size;
 } CuvidContext;
 
 typedef struct CuvidParsedFrame
@@ -417,6 +420,9 @@ static int cuvid_decode_packet(AVCodecContext *avctx, const AVPacket *avpkt)
         cupkt.flags = CUVID_PKT_ENDOFSTREAM;
         ctx->decoder_flushing = 1;
     }
+
+    if (ctx->full_frames)
+        cupkt.flags |= CUVID_PKT_ENDOFPICTURE;
 
     ret = CHECK_CU(ctx->cvdl->cuvidParseVideoData(ctx->cuparser, &cupkt));
 
@@ -965,7 +971,7 @@ static av_cold int cuvid_decode_init(AVCodecContext *avctx)
     }
 
     ctx->cuparseinfo.ulMaxNumDecodeSurfaces = ctx->nb_surfaces;
-    ctx->cuparseinfo.ulMaxDisplayDelay = 4;
+    ctx->cuparseinfo.ulMaxDisplayDelay = ctx->buffer_size;
     ctx->cuparseinfo.pUserData = avctx;
     ctx->cuparseinfo.pfnSequenceCallback = cuvid_handle_video_sequence;
     ctx->cuparseinfo.pfnDecodePicture = cuvid_handle_picture_decode;
@@ -1079,6 +1085,8 @@ static const AVOption options[] = {
     { "drop_second_field", "Drop second field when deinterlacing", OFFSET(drop_second_field), AV_OPT_TYPE_BOOL, { .i64 = 0 }, 0, 1, VD },
     { "crop",     "Crop (top)x(bottom)x(left)x(right)", OFFSET(crop_expr), AV_OPT_TYPE_STRING, { .str = NULL }, 0, 0, VD },
     { "resize",   "Resize (width)x(height)", OFFSET(resize_expr), AV_OPT_TYPE_STRING, { .str = NULL }, 0, 0, VD },
+    { "full_frames", "Each packet send to decode contains a full frame", OFFSET(full_frames), AV_OPT_TYPE_BOOL, { .i64 = 0 }, 0, 1, VD },
+    { "buffer",   "Number of images buffered", OFFSET(buffer_size), AV_OPT_TYPE_INT, { .i64 = 4 }, 0, 100, VD },
     { NULL }
 };
 
