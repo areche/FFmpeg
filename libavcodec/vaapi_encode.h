@@ -49,7 +49,7 @@ enum {
     MAX_TILE_COLS          = 20,
 };
 
-extern const AVCodecHWConfigInternal *ff_vaapi_encode_hw_configs[];
+extern const AVCodecHWConfigInternal *const ff_vaapi_encode_hw_configs[];
 
 enum {
     PICTURE_TYPE_IDR = 0,
@@ -64,7 +64,6 @@ typedef struct VAAPIEncodeSlice {
     int             row_size;
     int             block_start;
     int             block_size;
-    void           *priv_data;
     void           *codec_slice_params;
 } VAAPIEncodeSlice;
 
@@ -307,8 +306,8 @@ typedef struct VAAPIEncodeContext {
     int slice_size;
 
     // Tile encoding.
-    int tile_rows;
     int tile_cols;
+    int tile_rows;
     // Tile width of the i-th column.
     int col_width[MAX_TILE_COLS];
     // Tile height of i-th row.

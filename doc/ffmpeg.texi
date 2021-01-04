@@ -675,13 +675,18 @@ Specify the preset for matching stream(s).
 Print encoding progress/statistics. It is on by default, to explicitly
 disable it you need to specify @code{-nostats}.
 
+@item -stats_period @var{time} (@emph{global})
+Set period at which encoding progress/statistics are updated. Default is 0.5 seconds.
+
 @item -progress @var{url} (@emph{global})
 Send program-friendly progress information to @var{url}.
 
-Progress information is written approximately every second and at the end of
+Progress information is written periodically and at the end of
 the encoding process. It is made of "@var{key}=@var{value}" lines. @var{key}
 consists of only alphanumeric characters. The last key of a sequence of
 progress information is always "progress".
+
+The update period is set using @code{-stats_period}.
 
 @anchor{stdin option}
 @item -stdin
@@ -1746,6 +1751,21 @@ this buffer, in packets, for the matching output stream.
 The default value of this option should be high enough for most uses, so only
 touch this option if you are sure that you need it.
 
+@item -muxing_queue_data_threshold @var{bytes} (@emph{output,per-stream})
+This is a minimum threshold until which the muxing queue size is not taken into
+account. Defaults to 50 megabytes per stream, and is based on the overall size
+of packets passed to the muxer.
+
+@item -auto_conversion_filters (@emph{global})
+Enable automatically inserting format conversion filters in all filter
+graphs, including those defined by @option{-vf}, @option{-af},
+@option{-filter_complex} and @option{-lavfi}. If filter format negotiation
+requires a conversion, the initialization of the filters will fail.
+Conversions can still be performed by inserting the relevant conversion
+filter (scale, aresample) in the graph.
+On by default, to explicitly disable it you need to specify
+@code{-noauto_conversion_filters}.
+
 @end table
 
 As a special exception, you can use a bitmap subtitle stream as input: it
@@ -2040,6 +2060,7 @@ ffmpeg -i src.ext -lmax 21*QP2LAMBDA dst.ext
 @ifset config-avfilter
 @include filters.texi
 @end ifset
+@include general_contents.texi
 @end ifset
 
 @chapter See Also

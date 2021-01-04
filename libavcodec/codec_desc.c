@@ -1413,6 +1413,20 @@ static const AVCodecDescriptor codec_descriptors[] = {
         .props     = AV_CODEC_PROP_INTRA_ONLY | AV_CODEC_PROP_LOSSLESS,
     },
     {
+        .id        = AV_CODEC_ID_AVS3,
+        .type      = AVMEDIA_TYPE_VIDEO,
+        .name      = "avs3",
+        .long_name = NULL_IF_CONFIG_SMALL("AVS3-P2/IEEE1857.10"),
+        .props     = AV_CODEC_PROP_LOSSY,
+    },
+    {
+        .id        = AV_CODEC_ID_MSP2,
+        .type      = AVMEDIA_TYPE_VIDEO,
+        .name      = "msp2",
+        .long_name = NULL_IF_CONFIG_SMALL("Microsoft Paint (MSP) version 2"),
+        .props     = AV_CODEC_PROP_INTRA_ONLY | AV_CODEC_PROP_LOSSLESS,
+    },
+    {
         .id        = AV_CODEC_ID_Y41P,
         .type      = AVMEDIA_TYPE_VIDEO,
         .name      = "y41p",
@@ -1505,6 +1519,7 @@ static const AVCodecDescriptor codec_descriptors[] = {
         .id        = AV_CODEC_ID_SMVJPEG,
         .type      = AVMEDIA_TYPE_VIDEO,
         .name      = "smvjpeg",
+        .props     = AV_CODEC_PROP_INTRA_ONLY | AV_CODEC_PROP_LOSSY,
         .long_name = NULL_IF_CONFIG_SMALL("Sigmatel Motion Video"),
     },
     {
@@ -1526,7 +1541,7 @@ static const AVCodecDescriptor codec_descriptors[] = {
         .id        = AV_CODEC_ID_CFHD,
         .type      = AVMEDIA_TYPE_VIDEO,
         .name      = "cfhd",
-        .long_name = NULL_IF_CONFIG_SMALL("Cineform HD"),
+        .long_name = NULL_IF_CONFIG_SMALL("GoPro CineForm HD"),
         .props     = AV_CODEC_PROP_LOSSY,
     },
     {
@@ -1783,6 +1798,41 @@ static const AVCodecDescriptor codec_descriptors[] = {
         .name      = "pfm",
         .long_name = NULL_IF_CONFIG_SMALL("PFM (Portable FloatMap) image"),
         .props     = AV_CODEC_PROP_INTRA_ONLY | AV_CODEC_PROP_LOSSLESS,
+    },
+    {
+        .id        = AV_CODEC_ID_MOBICLIP,
+        .type      = AVMEDIA_TYPE_VIDEO,
+        .name      = "mobiclip",
+        .long_name = NULL_IF_CONFIG_SMALL("MobiClip Video"),
+        .props     = AV_CODEC_PROP_LOSSY,
+    },
+    {
+        .id        = AV_CODEC_ID_PHOTOCD,
+        .type      = AVMEDIA_TYPE_VIDEO,
+        .name      = "photocd",
+        .long_name = NULL_IF_CONFIG_SMALL("Kodak Photo CD"),
+        .props     = AV_CODEC_PROP_LOSSY,
+    },
+    {
+        .id        = AV_CODEC_ID_IPU,
+        .type      = AVMEDIA_TYPE_VIDEO,
+        .name      = "ipu",
+        .long_name = NULL_IF_CONFIG_SMALL("IPU Video"),
+        .props     = AV_CODEC_PROP_INTRA_ONLY | AV_CODEC_PROP_LOSSY,
+    },
+    {
+        .id        = AV_CODEC_ID_ARGO,
+        .type      = AVMEDIA_TYPE_VIDEO,
+        .name      = "argo",
+        .long_name = NULL_IF_CONFIG_SMALL("Argonaut Games Video"),
+        .props     = AV_CODEC_PROP_LOSSY,
+    },
+    {
+        .id        = AV_CODEC_ID_CRI,
+        .type      = AVMEDIA_TYPE_VIDEO,
+        .name      = "cri",
+        .long_name = NULL_IF_CONFIG_SMALL("Cintel RAW"),
+        .props     = AV_CODEC_PROP_INTRA_ONLY | AV_CODEC_PROP_LOSSY | AV_CODEC_PROP_LOSSLESS,
     },
 
     /* various PCM "codecs" */
@@ -2374,6 +2424,13 @@ static const AVCodecDescriptor codec_descriptors[] = {
         .type      = AVMEDIA_TYPE_AUDIO,
         .name      = "adpcm_ima_cunning",
         .long_name = NULL_IF_CONFIG_SMALL("ADPCM IMA Cunning Developments"),
+        .props     = AV_CODEC_PROP_INTRA_ONLY | AV_CODEC_PROP_LOSSY,
+    },
+    {
+        .id        = AV_CODEC_ID_ADPCM_IMA_MOFLEX,
+        .type      = AVMEDIA_TYPE_AUDIO,
+        .name      = "adpcm_ima_moflex",
+        .long_name = NULL_IF_CONFIG_SMALL("ADPCM IMA MobiClip MOFLEX"),
         .props     = AV_CODEC_PROP_INTRA_ONLY | AV_CODEC_PROP_LOSSY,
     },
 
@@ -3123,6 +3180,13 @@ static const AVCodecDescriptor codec_descriptors[] = {
         .long_name = NULL_IF_CONFIG_SMALL("CRI HCA"),
         .props     = AV_CODEC_PROP_INTRA_ONLY | AV_CODEC_PROP_LOSSY,
     },
+    {
+        .id        = AV_CODEC_ID_FASTAUDIO,
+        .type      = AVMEDIA_TYPE_AUDIO,
+        .name      = "fastaudio",
+        .long_name = NULL_IF_CONFIG_SMALL("MobiClip FastAudio"),
+        .props     = AV_CODEC_PROP_INTRA_ONLY | AV_CODEC_PROP_LOSSY,
+    },
 
     /* subtitle codecs */
     {
@@ -3380,6 +3444,13 @@ static const AVCodecDescriptor codec_descriptors[] = {
         .name      = "bin_data",
         .long_name = NULL_IF_CONFIG_SMALL("binary data"),
         .mime_types= MT("application/octet-stream"),
+    },
+    {
+        .id        = AV_CODEC_ID_MPEG2TS,
+        .type      = AVMEDIA_TYPE_DATA,
+        .name      = "mpegts",
+        .long_name = NULL_IF_CONFIG_SMALL("raw MPEG-TS stream"),
+        .mime_types= MT("application/MP2T"),
     },
     {
         .id        = AV_CODEC_ID_WRAPPED_AVFRAME,

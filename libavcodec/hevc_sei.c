@@ -22,6 +22,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "atsc_a53.h"
+#include "dynamic_hdr10_plus.h"
 #include "golomb.h"
 #include "hevc_ps.h"
 #include "hevc_sei.h"
@@ -164,51 +166,17 @@ static int decode_nal_sei_pic_timing(HEVCSEI *s, GetBitContext *gb, const HEVCPa
 static int decode_registered_user_data_closed_caption(HEVCSEIA53Caption *s, GetBitContext *gb,
                                                       int size)
 {
-    int flag;
-    int user_data_type_code;
-    int cc_count;
+    int ret;
 
     if (size < 3)
-       return AVERROR(EINVAL);
+       return AVERROR_INVALIDDATA;
 
-    user_data_type_code = get_bits(gb, 8);
-    if (user_data_type_code == 0x3) {
-        skip_bits(gb, 1); // reserved
+    ret = ff_parse_a53_cc(&s->buf_ref, gb->buffer + get_bits_count(gb) / 8, size);
 
-        flag = get_bits(gb, 1); // process_cc_data_flag
-        if (flag) {
-            skip_bits(gb, 1);
-            cc_count = get_bits(gb, 5);
-            skip_bits(gb, 8); // reserved
-            size -= 2;
+    if (ret < 0)
+        return ret;
 
-            if (cc_count && size >= cc_count * 3) {
-                int old_size = s->buf_ref ? s->buf_ref->size : 0;
-                const uint64_t new_size = (old_size + cc_count
-                                           * UINT64_C(3));
-                int i, ret;
-
-                if (new_size > INT_MAX)
-                    return AVERROR(EINVAL);
-
-                /* Allow merging of the cc data from two fields. */
-                ret = av_buffer_realloc(&s->buf_ref, new_size);
-                if (ret < 0)
-                    return ret;
-
-                for (i = 0; i < cc_count; i++) {
-                    s->buf_ref->data[old_size++] = get_bits(gb, 8);
-                    s->buf_ref->data[old_size++] = get_bits(gb, 8);
-                    s->buf_ref->data[old_size++] = get_bits(gb, 8);
-                }
-                skip_bits(gb, 8); // marker_bits
-            }
-        }
-    } else {
-        int i;
-        for (i = 0; i < size - 1; i++)
-            skip_bits(gb, 8);
-    }
+    skip_bits_long(gb, size * 8);
 
     return 0;
 }
@@ -239,34 +207,109 @@ static int decode_nal_sei_user_data_unregistered(HEVCSEIUnregistered *s, GetBitC
     return 0;
 }
 
-static int decode_nal_sei_user_data_registered_itu_t_t35(HEVCSEI *s, GetBitContext *gb,
-                                                         int size)
+static int decode_registered_user_data_dynamic_hdr_plus(HEVCSEIDynamicHDRPlus *s,
+                                                        GetBitContext *gb, int size)
 {
-    uint32_t country_code;
-    uint32_t user_identifier;
+    size_t meta_size;
+    int err;
+    AVDynamicHDRPlus *metadata = av_dynamic_hdr_plus_alloc(&meta_size);
+    if (!metadata)
+        return AVERROR(ENOMEM);
 
-    if (size < 7)
-        return AVERROR(EINVAL);
-    size -= 7;
+    err = ff_parse_itu_t_t35_to_dynamic_hdr10_plus(metadata,
+                                                   gb->buffer + get_bits_count(gb) / 8, size);
+    if (err < 0) {
+        av_free(metadata);
+        return err;
+    }
+
+    av_buffer_unref(&s->info);
+    s->info = av_buffer_create((uint8_t *)metadata, meta_size, NULL, NULL, 0);
+    if (!s->info) {
+        av_free(metadata);
+        return AVERROR(ENOMEM);
+    }
+
+    skip_bits_long(gb, size * 8);
+
+    return 0;
+}
+
+static int decode_nal_sei_user_data_registered_itu_t_t35(HEVCSEI *s, GetBitContext *gb,
+                                                         void *logctx, int size)
+{
+    int country_code, provider_code;
+
+    if (size < 3)
+        return AVERROR_INVALIDDATA;
+    size -= 3;
 
     country_code = get_bits(gb, 8);
     if (country_code == 0xFF) {
+        if (size < 1)
+            return AVERROR_INVALIDDATA;
+
         skip_bits(gb, 8);
         size--;
     }
 
-    skip_bits(gb, 8);
-    skip_bits(gb, 8);
+    if (country_code != 0xB5) { // usa_country_code
+        av_log(logctx, AV_LOG_VERBOSE,
+               "Unsupported User Data Registered ITU-T T35 SEI message (country_code = %d)\n",
+               country_code);
+        goto end;
+    }
 
-    user_identifier = get_bits_long(gb, 32);
+    provider_code = get_bits(gb, 16);
 
-    switch (user_identifier) {
+    switch (provider_code) {
+    case 0x3C: { // smpte_provider_code
+        // A/341 Amendment - 2094-40
+        const uint16_t smpte2094_40_provider_oriented_code = 0x0001;
+        const uint8_t smpte2094_40_application_identifier = 0x04;
+        uint16_t provider_oriented_code;
+        uint8_t application_identifier;
+
+        if (size < 3)
+            return AVERROR_INVALIDDATA;
+        size -= 3;
+
+        provider_oriented_code = get_bits(gb, 16);
+        application_identifier = get_bits(gb, 8);
+        if (provider_oriented_code == smpte2094_40_provider_oriented_code &&
+            application_identifier == smpte2094_40_application_identifier) {
+            return decode_registered_user_data_dynamic_hdr_plus(&s->dynamic_hdr_plus, gb, size);
+        }
+        break;
+    }
+    case 0x31: { // atsc_provider_code
+        uint32_t user_identifier;
+
+        if (size < 4)
+            return AVERROR_INVALIDDATA;
+        size -= 4;
+
+        user_identifier = get_bits_long(gb, 32);
+        switch (user_identifier) {
         case MKBETAG('G', 'A', '9', '4'):
             return decode_registered_user_data_closed_caption(&s->a53_caption, gb, size);
         default:
-            skip_bits_long(gb, size * 8);
+            av_log(logctx, AV_LOG_VERBOSE,
+                   "Unsupported User Data Registered ITU-T T35 SEI message (atsc user_identifier = 0x%04x)\n",
+                   user_identifier);
             break;
+        }
+        break;
     }
+    default:
+        av_log(logctx, AV_LOG_VERBOSE,
+               "Unsupported User Data Registered ITU-T T35 SEI message (provider_code = %d)\n",
+               provider_code);
+        break;
+    }
+
+end:
+    skip_bits_long(gb, size * 8);
     return 0;
 }
 
@@ -372,7 +415,7 @@ static int decode_nal_sei_prefix(GetBitContext *gb, void *logctx, HEVCSEI *s,
     case HEVC_SEI_TYPE_ACTIVE_PARAMETER_SETS:
         return decode_nal_sei_active_parameter_sets(s, gb, logctx);
     case HEVC_SEI_TYPE_USER_DATA_REGISTERED_ITU_T_T35:
-        return decode_nal_sei_user_data_registered_itu_t_t35(s, gb, size);
+        return decode_nal_sei_user_data_registered_itu_t_t35(s, gb, logctx, size);
     case HEVC_SEI_TYPE_USER_DATA_UNREGISTERED:
         return decode_nal_sei_user_data_unregistered(&s->unregistered, gb, size);
     case HEVC_SEI_TYPE_ALTERNATIVE_TRANSFER_CHARACTERISTICS:
@@ -453,4 +496,5 @@ void ff_hevc_reset_sei(HEVCSEI *s)
         av_buffer_unref(&s->unregistered.buf_ref[i]);
     s->unregistered.nb_buf_ref = 0;
     av_freep(&s->unregistered.buf_ref);
+    av_buffer_unref(&s->dynamic_hdr_plus.info);
 }
